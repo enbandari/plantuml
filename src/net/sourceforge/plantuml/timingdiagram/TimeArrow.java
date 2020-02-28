@@ -37,7 +37,10 @@ package net.sourceforge.plantuml.timingdiagram;
 import java.awt.geom.Dimension2D;
 import java.awt.geom.Point2D;
 
+import net.sourceforge.plantuml.FontParam;
+import net.sourceforge.plantuml.ISkinParam;
 import net.sourceforge.plantuml.ISkinSimple;
+import net.sourceforge.plantuml.SkinParamUtils;
 import net.sourceforge.plantuml.cucadiagram.Display;
 import net.sourceforge.plantuml.cucadiagram.WithLinkType;
 import net.sourceforge.plantuml.graphic.FontConfiguration;
@@ -58,24 +61,24 @@ public class TimeArrow implements UDrawable {
 	private final Point2D start;
 	private final Point2D end;
 	private final Display label;
-	private final ISkinSimple spriteContainer;
+	private final ISkinParam skinParam;
 	private final WithLinkType type;
 
 	public static TimeArrow create(IntricatedPoint pt1, IntricatedPoint pt2, Display label,
-			ISkinSimple spriteContainer, WithLinkType type) {
-		final TimeArrow arrow1 = new TimeArrow(pt1.getPointA(), pt2.getPointA(), label, spriteContainer, type);
-		final TimeArrow arrow2 = new TimeArrow(pt1.getPointA(), pt2.getPointB(), label, spriteContainer, type);
-		final TimeArrow arrow3 = new TimeArrow(pt1.getPointB(), pt2.getPointA(), label, spriteContainer, type);
-		final TimeArrow arrow4 = new TimeArrow(pt1.getPointB(), pt2.getPointB(), label, spriteContainer, type);
+			ISkinParam skinParam, WithLinkType type) {
+		final TimeArrow arrow1 = new TimeArrow(pt1.getPointA(), pt2.getPointA(), label, skinParam, type);
+		final TimeArrow arrow2 = new TimeArrow(pt1.getPointA(), pt2.getPointB(), label, skinParam, type);
+		final TimeArrow arrow3 = new TimeArrow(pt1.getPointB(), pt2.getPointA(), label, skinParam, type);
+		final TimeArrow arrow4 = new TimeArrow(pt1.getPointB(), pt2.getPointB(), label, skinParam, type);
 		return shorter(arrow1, arrow2, arrow3, arrow4);
 	}
 
-	private TimeArrow(Point2D start, Point2D end, Display label, ISkinSimple spriteContainer, WithLinkType type) {
+	private TimeArrow(Point2D start, Point2D end, Display label, ISkinParam skinParam, WithLinkType type) {
 		this.start = start;
 		this.type = type;
 		this.end = end;
 		this.label = label;
-		this.spriteContainer = spriteContainer;
+		this.skinParam = skinParam;
 	}
 
 	private double getAngle() {
@@ -98,7 +101,7 @@ public class TimeArrow implements UDrawable {
 	}
 
 	public TimeArrow translate(UTranslate translate) {
-		return new TimeArrow(translate.getTranslated(start), translate.getTranslated(end), label, spriteContainer, type);
+		return new TimeArrow(translate.getTranslated(start), translate.getTranslated(end), label, skinParam, type);
 	}
 
 	public static Point2D onCircle(Point2D pt, double alpha) {
@@ -109,7 +112,8 @@ public class TimeArrow implements UDrawable {
 	}
 
 	private FontConfiguration getFontConfiguration() {
-		final UFont font = UFont.serif(14);
+		//apply skinparam font settings
+		final UFont font = SkinParamUtils.getFont(skinParam, FontParam.ARROW, null);
 
 		return new FontConfiguration(font, type.getSpecificColor(), type.getSpecificColor(), false);
 	}
@@ -131,14 +135,15 @@ public class TimeArrow implements UDrawable {
 
 		ug = ug.apply(new UChangeBackColor(type.getSpecificColor()));
 		ug.draw(polygon);
-
-		final TextBlock textLabel = label.create(getFontConfiguration(), HorizontalAlignment.LEFT, spriteContainer);
+		final TextBlock textLabel = label.create(getFontConfiguration(), HorizontalAlignment.LEFT, skinParam);
 		double xText = (pt1.getX() + pt2.getX()) / 2;
 		double yText = (pt1.getY() + pt2.getY()) / 2;
-		if (start.getY() < end.getY()) {
-			final Dimension2D dimLabel = textLabel.calculateDimension(ug.getStringBounder());
-			yText -= dimLabel.getHeight();
-		}
+
+		//adjust position of arrow label.
+		final Dimension2D dimLabel = textLabel.calculateDimension(ug.getStringBounder());
+		int direction = start.getY() < end.getY() ? 1 : -1;
+		yText -= dimLabel.getHeight() * (direction + 0.5);
+
 		textLabel.drawU(ug.apply(new UTranslate(xText, yText)));
 
 		// final double radius = 4;
